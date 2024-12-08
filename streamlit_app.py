@@ -20,14 +20,14 @@ def transcribe_image_with_gemini(image):
         pil_image.save(image_bytes, format='PNG')
         image_bytes.seek(0)
         
-        # Envia a imagem para transcrição
-        response = genai.generate_text(
-            prompt="Transcreva o texto da imagem anexada:",
-            files={"image": image_bytes}
-        )
+        # Utiliza a API Gemini para processamento da imagem
+        response = genai.upload_file(image_bytes, mime_type="image/png")
         
-        # Retorna o texto transcrito
-        return response.get("text", "Nenhum texto encontrado.")
+        # Se a resposta retornar texto, processa a transcrição
+        if response and "text" in response:
+            return response["text"]
+        else:
+            return "Nenhum texto encontrado."
     except Exception as e:
         st.error(f"Ocorreu um erro: {e}")
         return None
