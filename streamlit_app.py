@@ -6,41 +6,31 @@ API_KEY = 'AIzaSyCQDgxbYhdgZT3VEgTg7vO33WUkugSbjKs'  # Substitua pelo sua chave 
 genai.configure(api_key=API_KEY)
 
 
-def transcribe_image(image):
+def transcribe_image_with_gemini(image):
     """
-    Transcreve texto de uma imagem usando Google Generative AI
+    Transcreve texto de uma imagem usando Google Gemini.
     """
     try:
-        # Converte a imagem para o formato adequado
+        # Converte a imagem para bytes
+        image_bytes = io.BytesIO()
         pil_image = Image.fromarray(image)
+        pil_image.save(image_bytes, format='PNG')
+        image_bytes.seek(0)
         
-        # Salva a imagem temporariamente
-        temp_file = "temp_image.png"
-        pil_image.save(temp_file)
-        
-        # Cria o modelo
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        
-        # Inicia sessão de chat com a imagem carregada
-        chat_session = model.start_chat(
-            history=[
-                {
-                    "role": "user",
-                    "parts": [genai.upload_file(temp_file, mime_type="image/png")]
-                }
-            ]
+        # Envia a imagem para transcrição
+        response = genai.generate_text(
+            prompt="Transcreva o texto da imagem anexada:",
+            files={"image": image_bytes}
         )
         
-        # Envia mensagem para transcrever
-        response = chat_session.send_message("Transcreva o que foi escrito na imagem.")
-        
-        return response.text
+        # Retorna o texto transcrito
+        return response.get("text", "Nenhum texto encontrado.")
     except Exception as e:
         st.error(f"Ocorreu um erro: {e}")
         return None
 
 def main():
-    st.title("Transcrição de Texto com Google Generative AI")
+    st.title("Transcrição de Texto com Google Gemini")
     
     # Escolha do método de entrada de imagem
     opcao = st.radio("Escolha o método de entrada:", 
@@ -50,39 +40,28 @@ def main():
     image = None
     
     if opcao == "Carregar Imagem":
-        # Carregador de arquivo tradicional
-        uploaded_file = st.file_uploader(
-            "Escolha uma imagem...", 
-            type=["png", "jpg", "jpeg", "gif"]
-        )
-        
-        if uploaded_file is not None:
-            # Converte o arquivo carregado para array numpy
-            image = np.array(Image.open(uploaded_file))
+        uploaded_file = st.file_uploader("Escolha uma imagem...", 
+                                         type=["png", "jpg", "jpeg"])
+        if uploaded_file:
+            # Carrega a imagem diretamente de BytesIO
+            image = Image.open(uploaded_file)
+            image = np.array(image)  # Converte para array NumPy
             st.image(image, caption="Imagem Carregada", use_container_width=True)
     
     else:
-        # Captura de imagem da câmera
         camera_image = st.camera_input("Tire uma foto")
-        
-        if camera_image is not None:
-            # Converte a imagem capturada para array numpy
+        if camera_image:
             image = np.array(Image.open(camera_image))
             st.image(image, caption="Imagem Capturada", use_container_width=True)
     
     # Botão de transcrição
     if image is not None:
         if st.button("Transcrever Texto"):
-            # Mostra spinner de carregamento
             with st.spinner("Transcrevendo..."):
-                # Chama função de transcrição
-                transcription = transcribe_image(image)
-                
-                # Exibe a transcrição
+                transcription = transcribe_image_with_gemini(image)
                 if transcription:
                     st.success("Transcrição concluída!")
                     st.text_area("Texto Transcrito:", value=transcription, height=200)
 
-# Executa o aplicativo
 if __name__ == "__main__":
     main()
