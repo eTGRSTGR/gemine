@@ -1,5 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
+import numpy as np
+from PIL import Image
+import io
 
 # Configuração direta da API
 API_KEY = 'AIzaSyCQDgxbYhdgZT3VEgTg7vO33WUkugSbjKs'  # Substitua pelo sua chave real
