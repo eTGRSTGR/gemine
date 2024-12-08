@@ -6,11 +6,18 @@ API_KEY = 'AIzaSyCQDgxbYhdgZT3VEgTg7vO33WUkugSbjKs'  # Substitua pelo sua chave 
 genai.configure(api_key=API_KEY)
 
 
-def transcribe_image(uploaded_file):
+def transcribe_image(image):
     """
-    Transcreve texto de uma imagem carregada usando Google Generative AI
+    Transcreve texto de uma imagem usando Google Generative AI
     """
     try:
+        # Converte a imagem para o formato adequado
+        pil_image = Image.fromarray(image)
+        
+        # Salva a imagem temporariamente
+        temp_file = "temp_image.png"
+        pil_image.save(temp_file)
+        
         # Cria o modelo
         model = genai.GenerativeModel("gemini-1.5-flash")
         
@@ -19,7 +26,7 @@ def transcribe_image(uploaded_file):
             history=[
                 {
                     "role": "user",
-                    "parts": [genai.upload_file(uploaded_file.name, mime_type=uploaded_file.type)]
+                    "parts": [genai.upload_file(temp_file, mime_type="image/png")]
                 }
             ]
         )
@@ -35,23 +42,41 @@ def transcribe_image(uploaded_file):
 def main():
     st.title("Transcrição de Texto com Google Generative AI")
     
-    # Carregador de arquivo
-    uploaded_file = st.file_uploader(
-        "Escolha uma imagem...", 
-        type=["png", "jpg", "jpeg", "gif"]
-    )
+    # Escolha do método de entrada de imagem
+    opcao = st.radio("Escolha o método de entrada:", 
+                     ["Carregar Imagem", "Usar Câmera"])
     
-    # Se arquivo for carregado
-    if uploaded_file is not None:
-        # Exibe a imagem carregada - Note a mudança para use_container_width
-        st.image(uploaded_file, caption="Imagem Carregada", use_container_width=True)
+    # Variável para armazenar a imagem
+    image = None
+    
+    if opcao == "Carregar Imagem":
+        # Carregador de arquivo tradicional
+        uploaded_file = st.file_uploader(
+            "Escolha uma imagem...", 
+            type=["png", "jpg", "jpeg", "gif"]
+        )
         
-        # Botão de transcrição
+        if uploaded_file is not None:
+            # Converte o arquivo carregado para array numpy
+            image = np.array(Image.open(uploaded_file))
+            st.image(image, caption="Imagem Carregada", use_container_width=True)
+    
+    else:
+        # Captura de imagem da câmera
+        camera_image = st.camera_input("Tire uma foto")
+        
+        if camera_image is not None:
+            # Converte a imagem capturada para array numpy
+            image = np.array(Image.open(camera_image))
+            st.image(image, caption="Imagem Capturada", use_container_width=True)
+    
+    # Botão de transcrição
+    if image is not None:
         if st.button("Transcrever Texto"):
             # Mostra spinner de carregamento
             with st.spinner("Transcrevendo..."):
                 # Chama função de transcrição
-                transcription = transcribe_image(uploaded_file)
+                transcription = transcribe_image(image)
                 
                 # Exibe a transcrição
                 if transcription:
